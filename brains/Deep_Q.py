@@ -20,9 +20,9 @@ def conv2D(name, input_tensor, weight_shape, strides):
         return conv_out
 
 
-def FC(name, input_tensor, out_dim, batch_size):
+def FC(name, input_tensor, out_dim):
     with tf.variable_scope(name) as scope:
-        reshape = tf.reshape(input_tensor, shape=[batch_size, -1], name=name+"_reshape")
+        reshape = tf.reshape(input_tensor, shape=[tf.shape(input_tensor)[0], -1], name=name+"_reshape")
         weights = tf.get_variable(name+"_weights",
                                   shape=[multiply_list(input_tensor.shape[1:]), out_dim])
         biases = tf.get_variable(name+'_biases', shape=out_dim)
@@ -37,16 +37,16 @@ class shallow_Q:
         self.exploration_const = exploration_const
         self.num_actions = num_actions
 
-        self.input_layer = tf.placeholder(dtype=tf.float32, shape=input_dims)
-        self.conv1 = conv2D("conv1", input_tensor=self.input_layer, weight_shape=[8, 8, 3, 32], strides=[1, 2, 2, 1])
+        self.input = tf.placeholder(dtype=tf.float32, shape=input_dims)
+        self.conv1 = conv2D("conv1", input_tensor=self.input, weight_shape=[8, 8, 3, 32], strides=[1, 2, 2, 1])
         print("CONV1 shape:", self.conv1.shape)
         self.conv2 = conv2D("conv2", input_tensor=self.conv1, weight_shape=[4, 4, 32, 64], strides=[1, 2, 2, 1])
         print("CONV2 shape:", self.conv2.shape)
-        self.fc1 = FC("fc1", self.conv2, out_dim=128, batch_size=input_dims[0])
+        self.fc1 = FC("fc1", self.conv2, out_dim=128)
         print("FC1 shape:", self.fc1)
-        self.fc2 = FC("fc2", self.fc1, out_dim=256, batch_size=input_dims[0])
+        self.fc2 = FC("fc2", self.fc1, out_dim=256)
         print("FC2 shape:", self.fc2)
-        self.q = FC("output", self.fc2, out_dim=num_actions, batch_size=input_dims[0])
+        self.q = FC("output", self.fc2, out_dim=num_actions)
 
         self.target_q_t = tf.placeholder('float32', [None], name='target_q_t')
         self.action = tf.placeholder('int64', [None], name='action')
@@ -63,8 +63,14 @@ class shallow_Q:
     def act(self, input_env):
         epsilon = random.random()
         if epsilon < self.exploration_const:
-            action = self.q_action.eval({self.input_layer: [input_env]})
+            action = self.q_action.eval({self.input: [input_env]})
         else:
             action = random.randint(0, self.num_actions - 1)
         return action
+
+    def train(self, sess, train_screens, train_actions, train_rewards):
+        sess.run([self.optimizer], feed_dict={
+            self.input: train_screens,
+            self.action: train_actions,
+            self.target_q_t: train_rewards})
 
