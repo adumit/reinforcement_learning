@@ -33,12 +33,13 @@ def FC(name, input_tensor, out_dim):
 
 
 class shallow_Q:
-    def __init__(self, input_dims, num_actions, exploration_const):
-        self.exploration_const = exploration_const
+    def __init__(self, input_dims, resize_dims, final_dims, num_actions):
         self.num_actions = num_actions
 
         self.input = tf.placeholder(dtype=tf.float32, shape=input_dims)
-        self.conv1 = conv2D("conv1", input_tensor=self.input, weight_shape=[8, 8, 3, 32], strides=[1, 2, 2, 1])
+        self.reshaped = tf.image.resize_images(self.input, size=resize_dims, method=tf.image.ResizeMethod.BILINEAR)
+        self.cropped = tf.image.resize_image_with_crop_or_pad(self.reshaped, target_height=final_dims[0], target_width=final_dims[1])
+        self.conv1 = conv2D("conv1", input_tensor=self.cropped, weight_shape=[8, 8, 3, 32], strides=[1, 4, 4, 1])
         print("CONV1 shape:", self.conv1.shape)
         self.conv2 = conv2D("conv2", input_tensor=self.conv1, weight_shape=[4, 4, 32, 64], strides=[1, 2, 2, 1])
         print("CONV2 shape:", self.conv2.shape)
@@ -60,10 +61,10 @@ class shallow_Q:
 
         self.q_action = tf.argmax(self.q, dimension=1)
 
-    def act(self, input_env):
+    def act(self, input_env, exploration_const):
         epsilon = random.random()
-        if epsilon < self.exploration_const:
-            action = self.q_action.eval({self.input: [input_env]})
+        if epsilon < exploration_const:
+            action = int(self.q_action.eval({self.input: [input_env]}))
         else:
             action = random.randint(0, self.num_actions - 1)
         return action

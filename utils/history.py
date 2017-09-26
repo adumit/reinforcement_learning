@@ -32,6 +32,7 @@ class History:
                    array_split(rewards, num_batches))
 
     def empty(self):
+        self._action_history = []
         self._screen_history = []
         self._reward_history = []
         self.num_obs = 0
