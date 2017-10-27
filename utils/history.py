@@ -26,10 +26,11 @@ class History:
             actions += actions[:num_to_append]
             rewards += rewards[:num_to_append]
 
-        num_batches = len(screens) / mini_batch_size
-        return zip(array_split(screens, num_batches),
-                   array_split(actions, num_batches),
-                   array_split(rewards, num_batches))
+        num_batches = int(len(screens) / mini_batch_size)
+        for i in range(num_batches):
+            yield (screens[i*mini_batch_size:(i+1)*mini_batch_size],
+                   actions[i*mini_batch_size:(i+1)*mini_batch_size],
+                   rewards[i*mini_batch_size:(i+1)*mini_batch_size])
 
     def empty(self):
         self._action_history = []
